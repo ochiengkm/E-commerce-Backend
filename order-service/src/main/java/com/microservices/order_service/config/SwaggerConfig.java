@@ -18,7 +18,7 @@ public class SwaggerConfig {
         Info information = new Info()
                 .title("E-commerce Backend")
                 .version("1.1")
-                .description("This API exposes endpoints for LnF")
+                .description("This API exposes endpoints for Order Service")
                 .contact(myContact);
 
         return new OpenAPI().info(information);
