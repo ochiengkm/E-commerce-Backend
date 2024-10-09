@@ -19,6 +19,7 @@ import java.util.UUID;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClientBuilder;
+//    private final Tracer tracer;
 
     public String placeOrder(Order order) {
 //        Order order = new Order();
@@ -30,29 +31,34 @@ public class OrderService {
                 .toList();
         order.setOrderLineItems(orderLineItems);
 
-        List<String> skuCodes= order.getOrderLineItems()
+        List<String> skuCodes = order.getOrderLineItems()
                 .stream()
                 .map(OrderLineItems::getSkuCode)
                 .toList();
 
-//        Should call inventory service first and place order if product is in stock
-        InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
-                .uri("http://inventory-service/inventory/get", uriBuilder ->
-                        uriBuilder.queryParam("skuCode", skuCodes)
-                                .build())
-                        .retrieve()
-                                .bodyToMono(InventoryResponse[].class)
-                                        .block();
-        boolean allProductsInStock = Arrays.stream(inventoryResponseArray)
-                .allMatch(InventoryResponse::isInStock);
-        if (allProductsInStock) {
-            orderRepository.save(order);
-            return "Order placed successfully";
-        } else {
-            throw new IllegalArgumentException("Product is not in stock, try again later.");
-        }
+//        Span inventoryServiceLookup = tracer.nextSpan().name("inventoryServiceLookup").start();
+//        try (Tracer.SpanInScope spanInScope = tracer.withSpan(inventoryServiceLookup.start())) {
+            //        Should call inventory service first and place order if product is in stock
+            InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
+                    .uri("http://inventory-service/inventory/get", uriBuilder ->
+                            uriBuilder.queryParam("skuCode", skuCodes)
+                                    .build())
+                    .retrieve()
+                    .bodyToMono(InventoryResponse[].class)
+                    .block();
+            assert inventoryResponseArray != null;
+            boolean allProductsInStock = Arrays.stream(inventoryResponseArray)
+                    .allMatch(InventoryResponse::isInStock);
+            if (allProductsInStock) {
+                orderRepository.save(order);
+                return "Order placed successfully";
+            } else {
+                throw new IllegalArgumentException("Product is not in stock, try again later.");
+            }
 
-    }
+//        } finally {
+//            inventoryServiceLookup.end();
+        }
 
     private OrderLineItems mapToOrder(OrderLineItems orderLineItems) {
 //        OrderLineItems orderLineItems1 = new OrderLineItems();
@@ -63,6 +69,4 @@ public class OrderService {
         return orderLineItems;
 
     }
-
-
 }
